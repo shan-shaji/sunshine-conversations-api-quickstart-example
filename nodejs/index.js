@@ -4,13 +4,20 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const SunshineConversationsApi = require('sunshine-conversations-client');
-
+const { name } = require('body-parser');
+const dotEnv = require('dotenv');
 
 // Config
+const result = dotEnv.config({ path: './.env' });
+if (result.error)
+  throw result.error;
+
+console.log(result.parsed);
+
 let defaultClient = SunshineConversationsApi.ApiClient.instance;
 let basicAuth = defaultClient.authentications['basicAuth'];
-basicAuth.username = 'your_key_id';
-basicAuth.password = 'your_secret_key';
+basicAuth.username = process.env.APP_ID;
+basicAuth.password = process.env.SECRET_KEY;
 const PORT = 8000;
 
 const apiInstance = new SunshineConversationsApi.MessagesApi()
@@ -31,8 +38,9 @@ app.post('/messages', function(req, res) {
   if (trigger === 'conversation:message') {
     const authorType = req.body.events[0].payload.message.author.type;
     if(authorType === 'user'){
-        const conversationId = req.body.events[0].payload.conversation.id;
-        sendMessage(appId, conversationId);
+      const conversationId = req.body.events[0].payload.conversation.id;
+      let name = req.body.events[0].payload.message.author.displayName;
+        sendMessage(appId, conversationId, name);
         res.end();
     }
   }
@@ -43,10 +51,15 @@ app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
 });
 
-async function sendMessage(appId, conversationId){
+async function sendMessage(appId, conversationId, name){
     let messagePost = new SunshineConversationsApi.MessagePost();  
     messagePost.setAuthor({type: 'business'});
-    messagePost.setContent({type: 'text', text: 'Live long and prosper'});
+  messagePost.setContent({ type: 'text', text: `Hey ${name}, how are you` });
+  try {
     let response = await apiInstance.postMessage(appId, conversationId, messagePost);
     console.log('API RESPONSE:\n', response);
+  } catch (error) {
+    console.log(error);
+  }
+ 
 }
